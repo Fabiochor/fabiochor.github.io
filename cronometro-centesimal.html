@@ -11,14 +11,25 @@
             margin: 20px;
             background-color: #f4f4f4;
         }
-        .container {
-            max-width: 700px;
+        .main-container {
+            display: flex;
+            max-width: 1200px;
             margin: 0 auto;
+            gap: 20px;
+        }
+        .container {
+            flex: 1;
             background-color: white;
             border: 2px solid #007bff;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .parallels-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
         h1 {
             color: #007bff;
@@ -73,13 +84,75 @@
         #saveCsv:hover {
             background-color: #138496;
         }
-        #laps {
+        #addParallel {
+            background-color: #6f42c1;
+            color: white;
+        }
+        #addParallel:hover {
+            background-color: #5a359a;
+        }
+        .floating-btn {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            padding: 20px;
+            border-radius: 50%;
+            font-size: 24px;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+        }
+        #floatingLap {
+            right: 20px;
+            background-color: #ffc107;
+            color: black;
+        }
+        #floatingStop {
+            left: 20px;
+            background-color: #dc3545;
+            color: white;
+        }
+        .parallel {
+            background-color: white;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .parallel h3 {
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .parallel h3 input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .delete-parallel-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .delete-parallel-btn:hover {
+            background-color: #c82333;
+        }
+        #laps, .parallel-laps {
             list-style-type: none;
             padding: 0;
             max-width: 600px;
             margin: 20px auto;
         }
-        #laps li {
+        #laps li, .parallel-laps li {
             background: #f8f9fa;
             margin: 5px 0;
             padding: 10px;
@@ -89,10 +162,10 @@
             align-items: center;
             justify-content: space-between;
         }
-        #laps li span {
+        #laps li span, .parallel-laps li span {
             flex: 1;
         }
-        #laps li input {
+        #laps li input, .parallel-laps li input {
             flex: 1;
             margin-left: 10px;
             padding: 5px;
@@ -112,20 +185,38 @@
         .delete-btn:hover {
             background-color: #c82333;
         }
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .floating-btn {
+                width: 200px;
+                height: 200px;
+                font-size: 18px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Cronômetro Centesimal</h1>
-        <div id="display">00:00.00</div>
-        <div class="buttons">
-            <button id="startStop">Iniciar</button>
-            <button id="reset">Reset</button>
-            <button id="lap">Registrar Lap</button>
-            <button id="saveCsv">Salvar como CSV</button>
+    <div class="main-container">
+        <div class="container">
+            <h1>Cronômetro Centesimal</h1>
+            <div id="display">00:00.00</div>
+            <div class="buttons">
+                <button id="startStop">Iniciar</button>
+                <button id="reset">Reset</button>
+                <button id="lap">Registrar Lap</button>
+                <button id="saveCsv">Salvar como CSV</button>
+                <button id="addParallel">Adicionar Cronômetro Paralelo</button>
+            </div>
+            <ul id="laps"></ul>
         </div>
-        <ul id="laps"></ul>
+        <div class="parallels-section" id="parallels"></div>
     </div>
+
+    <!-- Botões flutuantes -->
+    <button id="floatingLap" class="floating-btn" title="Registrar Lap">Lap</button>
+    <button id="floatingStop" class="floating-btn" title="Parar Cronômetro">Stop</button>
 
     <script>
         let isRunning = false;
@@ -134,18 +225,23 @@
         let lapTimes = [];
         let lastLapTime = 0;
         let intervalId;
+        let parallels = [];
 
         const display = document.getElementById('display');
         const startStopBtn = document.getElementById('startStop');
         const resetBtn = document.getElementById('reset');
         const lapBtn = document.getElementById('lap');
         const saveCsvBtn = document.getElementById('saveCsv');
+        const addParallelBtn = document.getElementById('addParallel');
         const lapsList = document.getElementById('laps');
+        const parallelsContainer = document.getElementById('parallels');
+        const floatingLapBtn = document.getElementById('floatingLap');
+        const floatingStopBtn = document.getElementById('floatingStop');
 
         function formatTime(ms) {
             const totalCentiseconds = Math.floor(ms / 10);
-            const minutes = Math.floor(totalCentiseconds / 10000); // 100 segundos = 1 minuto (100*100 centésimos)
-            const seconds = Math.floor((totalCentiseconds % 10000) / 100); // Segundos de 00 a 99
+            const minutes = Math.floor(totalCentiseconds / 10000);
+            const seconds = Math.floor((totalCentiseconds % 10000) / 100);
             const centiseconds = totalCentiseconds % 100;
             return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
         }
@@ -179,8 +275,13 @@
             elapsedTime = 0;
             lapTimes = [];
             lastLapTime = 0;
+            parallels.forEach(p => {
+                p.lapTimes = [];
+                p.lastLapTime = 0;
+            });
             updateDisplay();
-            lapsList.innerHTML = '';
+            renderLaps();
+            renderParallels();
         }
 
         function lap() {
@@ -190,11 +291,16 @@
             lapTimes.push({ total: currentTime, interval: interval, reason: '' });
             lastLapTime = currentTime;
             renderLaps();
+            // Focar no input do último lap adicionado
+            const lastLi = lapsList.lastElementChild;
+            if (lastLi) {
+                const input = lastLi.querySelector('input');
+                if (input) input.focus();
+            }
         }
 
         function deleteLap(index) {
             lapTimes.splice(index, 1);
-            // Recalcular intervalos após exclusão
             if (lapTimes.length > 0) {
                 lapTimes[0].interval = lapTimes[0].total;
                 for (let i = 1; i < lapTimes.length; i++) {
@@ -228,17 +334,117 @@
             });
         }
 
+        function addParallel() {
+            const parallel = {
+                id: parallels.length,
+                name: `Cronômetro Paralelo ${parallels.length + 1}`,
+                lapTimes: [],
+                lastLapTime: 0
+            };
+            parallels.push(parallel);
+            renderParallels();
+        }
+
+        function deleteParallel(parallelIndex) {
+            parallels.splice(parallelIndex, 1);
+            renderParallels();
+        }
+
+        function parallelLap(parallelIndex) {
+            const currentTime = elapsedTime;
+            const interval = currentTime - parallels[parallelIndex].lastLapTime;
+            const lapIndex = parallels[parallelIndex].lapTimes.length;
+            parallels[parallelIndex].lapTimes.push({ total: currentTime, interval: interval, reason: '' });
+            parallels[parallelIndex].lastLapTime = currentTime;
+            renderParallels();
+            // Focar no input do último lap paralelo adicionado
+            const parallelDiv = parallelsContainer.children[parallelIndex];
+            if (parallelDiv) {
+                const ul = parallelDiv.querySelector('.parallel-laps');
+                const lastLi = ul.lastElementChild;
+                if (lastLi) {
+                    const input = lastLi.querySelector('input');
+                    if (input) input.focus();
+                }
+            }
+        }
+
+        function deleteParallelLap(parallelIndex, lapIndex) {
+            parallels[parallelIndex].lapTimes.splice(lapIndex, 1);
+            if (parallels[parallelIndex].lapTimes.length > 0) {
+                parallels[parallelIndex].lapTimes[0].interval = parallels[parallelIndex].lapTimes[0].total;
+                for (let i = 1; i < parallels[parallelIndex].lapTimes.length; i++) {
+                    parallels[parallelIndex].lapTimes[i].interval = parallels[parallelIndex].lapTimes[i].total - parallels[parallelIndex].lapTimes[i-1].total;
+                }
+            }
+            renderParallels();
+        }
+
+        function renderParallels() {
+            parallelsContainer.innerHTML = '';
+            parallels.forEach((parallel, pIndex) => {
+                const div = document.createElement('div');
+                div.className = 'parallel';
+                const h3 = document.createElement('h3');
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.value = parallel.name;
+                nameInput.addEventListener('input', (e) => {
+                    parallels[pIndex].name = e.target.value;
+                });
+                const deleteParallelBtn = document.createElement('button');
+                deleteParallelBtn.className = 'delete-parallel-btn';
+                deleteParallelBtn.textContent = 'Excluir Cronômetro';
+                deleteParallelBtn.addEventListener('click', () => deleteParallel(pIndex));
+                h3.appendChild(nameInput);
+                h3.appendChild(deleteParallelBtn);
+                const lapBtn = document.createElement('button');
+                lapBtn.textContent = 'Registrar Lap Paralelo';
+                lapBtn.addEventListener('click', () => parallelLap(pIndex));
+                const ul = document.createElement('ul');
+                ul.className = 'parallel-laps';
+                parallel.lapTimes.forEach((lap, lIndex) => {
+                    const li = document.createElement('li');
+                    const span = document.createElement('span');
+                    span.textContent = `Lap ${lIndex + 1}: ${formatTime(lap.total)} (diferença: ${formatTime(lap.interval)})`;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = 'Motivo do lap';
+                    input.value = lap.reason;
+                    input.addEventListener('input', (e) => {
+                        parallels[pIndex].lapTimes[lIndex].reason = e.target.value;
+                    });
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = 'Excluir';
+                    deleteBtn.addEventListener('click', () => deleteParallelLap(pIndex, lIndex));
+                    li.appendChild(span);
+                    li.appendChild(input);
+                    li.appendChild(deleteBtn);
+                    ul.appendChild(li);
+                });
+                div.appendChild(h3);
+                div.appendChild(lapBtn);
+                div.appendChild(ul);
+                parallelsContainer.appendChild(div);
+            });
+        }
+
         function saveCsv() {
-            if (lapTimes.length === 0) {
+            if (lapTimes.length === 0 && parallels.every(p => p.lapTimes.length === 0)) {
                 alert('Nenhum lap registrado para salvar.');
                 return;
             }
             const fileName = prompt('Digite o nome do arquivo (sem extensão):', 'laps') || 'laps';
-            let csvContent = 'Lap,Tempo Total,Diferença,Motivo\n';
+            let csvContent = 'Tipo,Lap,Tempo Total,Diferença,Motivo\n';
             lapTimes.forEach((lap, index) => {
-                csvContent += `${index + 1},"${formatTime(lap.total)}","${formatTime(lap.interval)}","${lap.reason}"\n`;
+                csvContent += `Principal,${index + 1},"${formatTime(lap.total)}","${formatTime(lap.interval)}","${lap.reason}"\n`;
             });
-            // Adicionar BOM para UTF-8
+            parallels.forEach((parallel, pIndex) => {
+                parallel.lapTimes.forEach((lap, lIndex) => {
+                    csvContent += `${parallel.name},${lIndex + 1},"${formatTime(lap.total)}","${formatTime(lap.interval)}","${lap.reason}"\n`;
+                });
+            });
             const BOM = '\uFEFF';
             const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -262,6 +468,9 @@
         resetBtn.addEventListener('click', reset);
         lapBtn.addEventListener('click', lap);
         saveCsvBtn.addEventListener('click', saveCsv);
+        addParallelBtn.addEventListener('click', addParallel);
+        floatingLapBtn.addEventListener('click', lap);
+        floatingStopBtn.addEventListener('click', stop);
     </script>
 </body>
 </html>
