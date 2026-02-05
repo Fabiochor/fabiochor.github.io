@@ -239,10 +239,11 @@
         const floatingStopBtn = document.getElementById('floatingStop');
 
         function formatTime(ms) {
-            const totalCentiseconds = Math.floor(ms / 10);
-            const minutes = Math.floor(totalCentiseconds / 10000);
-            const seconds = Math.floor((totalCentiseconds % 10000) / 100);
-            const centiseconds = totalCentiseconds % 100;
+            // Centesimal: 1 "segundo" = 0.6s reais, 100 "segundos" = 60s reais
+            const totalCentiseconds = Math.floor(ms / 6); // Cada 6ms = 1 centésimo
+            const minutes = Math.floor(totalCentiseconds / 10000); // 100 "segundos" = 1 minuto
+            const seconds = Math.floor((totalCentiseconds % 10000) / 100); // "Segundos" 00-99
+            const centiseconds = totalCentiseconds % 100; // Centésimos 00-99
             return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
         }
 
