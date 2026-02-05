@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronômetro Centesimal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background-color: white;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        #display {
+            font-size: 48px;
+            margin: 20px;
+            padding: 10px;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            background-color: #e9ecef;
+            display: inline-block;
+        }
+        .buttons {
+            margin: 20px 0;
+        }
+        button {
+            font-size: 18px;
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #startStop {
+            background-color: #28a745;
+            color: white;
+        }
+        #startStop:hover {
+            background-color: #218838;
+        }
+        #reset {
+            background-color: #dc3545;
+            color: white;
+        }
+        #reset:hover {
+            background-color: #c82333;
+        }
+        #lap {
+            background-color: #ffc107;
+            color: black;
+        }
+        #lap:hover {
+            background-color: #e0a800;
+        }
+        #saveCsv {
+            background-color: #17a2b8;
+            color: white;
+        }
+        #saveCsv:hover {
+            background-color: #138496;
+        }
+        #laps {
+            list-style-type: none;
+            padding: 0;
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        #laps li {
+            background: #f8f9fa;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #laps li span {
+            flex: 1;
+        }
+        #laps li input {
+            flex: 1;
+            margin-left: 10px;
+            padding: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cronômetro Centesimal</h1>
+        <div id="display">00:00.00</div>
+        <div class="buttons">
+            <button id="startStop">Iniciar</button>
+            <button id="reset">Reset</button>
+            <button id="lap">Registrar Lap</button>
+            <button id="saveCsv">Salvar como CSV</button>
+        </div>
+        <ul id="laps"></ul>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let lapTimes = [];
+        let lastLapTime = 0;
+        let intervalId;
+
+        const display = document.getElementById('display');
+        const startStopBtn = document.getElementById('startStop');
+        const resetBtn = document.getElementById('reset');
+        const lapBtn = document.getElementById('lap');
+        const saveCsvBtn = document.getElementById('saveCsv');
+        const lapsList = document.getElementById('laps');
+
+        function formatTime(ms) {
+            const totalCentiseconds = Math.floor(ms / 10);
+            const minutes = Math.floor(totalCentiseconds / 10000); // 100 segundos = 1 minuto (100*100 centésimos)
+            const seconds = Math.floor((totalCentiseconds % 10000) / 100); // Segundos de 00 a 99
+            const centiseconds = totalCentiseconds % 100;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            display.textContent = formatTime(elapsedTime);
+        }
+
+        function start() {
+            if (!isRunning) {
+                isRunning = true;
+                startTime = Date.now() - elapsedTime;
+                intervalId = setInterval(() => {
+                    elapsedTime = Date.now() - startTime;
+                    updateDisplay();
+                }, 10);
+                startStopBtn.textContent = 'Parar';
+            }
+        }
+
+        function stop() {
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(intervalId);
+                startStopBtn.textContent = 'Iniciar';
+            }
+        }
+
+        function reset() {
+            stop();
+            elapsedTime = 0;
+            lapTimes = [];
+            lastLapTime = 0;
+            updateDisplay();
+            lapsList.innerHTML = '';
+        }
+
+        function lap() {
+            const currentTime = elapsedTime;
+            const interval = currentTime - lastLapTime;
+            const lapIndex = lapTimes.length;
+            lapTimes.push({ total: currentTime, interval: interval, reason: '' });
+            lastLapTime = currentTime;
+            renderLaps();
+        }
+
+        function deleteLap(index) {
+            lapTimes.splice(index, 1);
+            // Recalcular intervalos após exclusão
+            if (lapTimes.length > 0) {
+                lapTimes[0].interval = lapTimes[0].total;
+                for (let i = 1; i < lapTimes.length; i++) {
+                    lapTimes[i].interval = lapTimes[i].total - lapTimes[i-1].total;
+                }
+            }
+            renderLaps();
+        }
+
+        function renderLaps() {
+            lapsList.innerHTML = '';
+            lapTimes.forEach((lap, index) => {
+                const li = document.createElement('li');
+                const span = document.createElement('span');
+                span.textContent = `Lap ${index + 1}: ${formatTime(lap.total)} (diferença: ${formatTime(lap.interval)})`;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Motivo do lap';
+                input.value = lap.reason;
+                input.addEventListener('input', (e) => {
+                    lapTimes[index].reason = e.target.value;
+                });
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Excluir';
+                deleteBtn.addEventListener('click', () => deleteLap(index));
+                li.appendChild(span);
+                li.appendChild(input);
+                li.appendChild(deleteBtn);
+                lapsList.appendChild(li);
+            });
+        }
+
+        function saveCsv() {
+            if (lapTimes.length === 0) {
+                alert('Nenhum lap registrado para salvar.');
+                return;
+            }
+            const fileName = prompt('Digite o nome do arquivo (sem extensão):', 'laps') || 'laps';
+            let csvContent = 'Lap,Tempo Total,Diferença,Motivo\n';
+            lapTimes.forEach((lap, index) => {
+                csvContent += `${index + 1},"${formatTime(lap.total)}","${formatTime(lap.interval)}","${lap.reason}"\n`;
+            });
+            // Adicionar BOM para UTF-8
+            const BOM = '\uFEFF';
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `${fileName}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        startStopBtn.addEventListener('click', () => {
+            if (isRunning) {
+                stop();
+            } else {
+                start();
+            }
+        });
+
+        resetBtn.addEventListener('click', reset);
+        lapBtn.addEventListener('click', lap);
+        saveCsvBtn.addEventListener('click', saveCsv);
+    </script>
+</body>
+</html>
