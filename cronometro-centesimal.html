@@ -138,7 +138,6 @@
         }
 
         .parallel {
-            background-color: white;
             border: 2px solid #007bff;
             border-radius: 10px;
             padding: 20px;
@@ -180,7 +179,6 @@
         .parallel-sticky-btn-container {
             position: sticky;
             bottom: 0;
-            background-color: white;
             z-index: 100;
             padding: 10px 0;
             border-top: 1px solid #dee2e6;
@@ -301,6 +299,28 @@
         const floatingLapBtn = document.getElementById('floatingLap');
         const floatingStopBtn = document.getElementById('floatingStop');
 
+        // Cores pastel para os cronômetros paralelos
+        const pastelColors = [
+            '#FFB3BA', // Rosa pastel
+            '#FFCCCB', // Vermelho claro
+            '#FFFFBA', // Amarelo pastel
+            '#BAE1BA', // Verde pastel
+            '#BAC7FF', // Azul pastel
+            '#E0BBE4', // Roxo pastel
+            '#FFDFD3', // Pêssego pastel
+            '#D4F1F4', // Ciano pastel
+            '#F8B4D6', // Magenta pastel
+            '#C7CEEA'  // Lavanda pastel
+        ];
+
+        let colorIndex = 0;
+
+        function getNextPastelColor() {
+            const color = pastelColors[colorIndex % pastelColors.length];
+            colorIndex++;
+            return color;
+        }
+
         function formatTime(ms) {
             const totalCentiseconds = Math.floor(ms / 6);
             const minutes = Math.floor(totalCentiseconds / 10000);
@@ -402,7 +422,8 @@
                 id: nextParallelId++,
                 name: `Cronômetro Paralelo ${parallels.length + 1}`,
                 lapTimes: [],
-                lastLapTime: 0
+                lastLapTime: 0,
+                backgroundColor: getNextPastelColor()
             };
             parallels.push(parallel);
             renderParallels();
@@ -450,6 +471,7 @@
                 // Renderizar o card do paralelo
                 const div = document.createElement('div');
                 div.className = 'parallel';
+                div.style.backgroundColor = parallel.backgroundColor;
                 
                 const h3 = document.createElement('h3');
                 const nameInput = document.createElement('input');
@@ -499,6 +521,7 @@
                 // Container sticky para o botão na parte inferior
                 const stickyBtnContainer = document.createElement('div');
                 stickyBtnContainer.className = 'parallel-sticky-btn-container';
+                stickyBtnContainer.style.backgroundColor = parallel.backgroundColor;
                 
                 const lapBtn = document.createElement('button');
                 lapBtn.className = 'parallel-lap-btn';
